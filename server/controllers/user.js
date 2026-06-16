@@ -135,6 +135,42 @@ export const createEmployee = async (req, res, next) => {
     }
 }
 
+export const updateUser = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+
+        const existingUser = await User.findById(userId);
+        if (!existingUser) return next(createError(404, 'User not found'));
+
+        // Prevent callers from overriding privileged fields via this endpoint
+        const { role, uid, password, ...safeUpdates } = req.body;
+
+        // If phone, email or username is being changed, check for duplicates
+        if (safeUpdates.phone) {
+            const phoneConflict = await User.findOne({ phone: safeUpdates.phone, _id: { $ne: userId } });
+            if (phoneConflict) return next(createError(400, 'Phone number already in use'));
+        }
+        if (safeUpdates.username) {
+            const usernameConflict = await User.findOne({ username: safeUpdates.username, _id: { $ne: userId } });
+            if (usernameConflict) return next(createError(400, 'Username already in use'));
+        }
+        if (safeUpdates.email) {
+            const emailConflict = await User.findOne({ email: safeUpdates.email, _id: { $ne: userId } });
+            if (emailConflict) return next(createError(400, 'Email already in use'));
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: safeUpdates },
+            { new: true, runValidators: true }
+        );
+
+        res.status(200).json({ result: updatedUser, message: 'User updated successfully', success: true });
+    } catch (err) {
+        next(createError(500, err.message));
+    }
+};
+
 export const updateRole = async (req, res, next) => {
     try {
 

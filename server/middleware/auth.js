@@ -59,3 +59,18 @@ export const verifySuperAdmin = (req, res, next) => {
         next(createError(500, err.message));
     }
 };
+
+export const verifyIsSameUser = (req, res, next) => {
+    try {
+        const { userId } = req.params;
+        const elevatedRoles = ['manager', 'super_admin'];
+
+        if (req.user._id === userId || elevatedRoles.includes(req.user.role)) {
+            return next();
+        }
+
+        next(createError(403, 'Access denied: you can only access your own profile'));
+    } catch (err) {
+        next(createError(500, err.message));
+    }
+};
